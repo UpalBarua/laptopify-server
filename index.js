@@ -50,7 +50,23 @@ async function run() {
           .limit(parseInt(limit) || 0)
           .toArray();
 
-        console.log(fetchedLaptops);
+        if (fetchedLaptops) {
+          return res.status(200).json(fetchedLaptops);
+        }
+
+        res.status(404).json({ message: "no laptops found" });
+      } catch (error) {
+        res.status(500).json({ message: "something went wrong" });
+      }
+    });
+
+    app.get("/trending", async (_req, res) => {
+      try {
+        const fetchedLaptops = await laptops
+          .find({})
+          .sort({ "ratings.average": -1 })
+          .limit(8)
+          .toArray();
 
         if (fetchedLaptops) {
           return res.status(200).json(fetchedLaptops);
