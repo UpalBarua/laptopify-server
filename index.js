@@ -26,6 +26,42 @@ async function run() {
     const db = client.db("laptopify");
     const laptops = db.collection("laptops");
 
+    app.get("/laptops", async (_req, res) => {
+      try {
+        const fetchedLaptops = await laptops.find({}).toArray();
+
+        if (fetchedLaptops) {
+          return res.status(200).json(fetchedLaptops);
+        }
+
+        res.status(404).json({ message: "no laptops found" });
+      } catch (error) {
+        res.status(500).json({ message: "something went wrong" });
+      }
+    });
+
+    app.get("/flash-sales", async (req, res) => {
+      try {
+        const limit = req.query.limit;
+
+        const fetchedLaptops = await laptops
+          .find({ isOnFlashSale: true })
+          .sort({ createdAt: -1 })
+          .limit(parseInt(limit) || 0)
+          .toArray();
+
+        console.log(fetchedLaptops);
+
+        if (fetchedLaptops) {
+          return res.status(200).json(fetchedLaptops);
+        }
+
+        res.status(404).json({ message: "no laptops found" });
+      } catch (error) {
+        res.status(500).json({ message: "something went wrong" });
+      }
+    });
+
     app.listen(port, () => {
       console.log(`[server] running on http://localhost:${port}`);
     });
