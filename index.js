@@ -6,6 +6,7 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 
 const { MongoClient } = require("mongodb");
+const { ObjectId } = require("mongodb");
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -26,12 +27,63 @@ async function run() {
     const db = client.db("laptopify");
     const laptops = db.collection("laptops");
 
-    app.get("/laptops", async (_req, res) => {
+    app.get("/laptops", async (req, res) => {
       try {
-        const fetchedLaptops = await laptops.find({}).toArray();
+        const { limit, brand, ratings, priceRange } = req.query;
+        let query = {};
+
+        if (brand) {
+          query = {
+            $or: brand.split(",").map((brand) => ({ brand })),
+          };
+        }
+
+        if (priceRange) {
+          const [min, max] = priceRange.split("-");
+          query = {
+            ...query,
+            price: {
+              $gte: parseFloat(min.trim().slice(1)),
+              $lte: parseFloat(max.trim().slice(1)),
+            },
+          };
+        }
+
+        if (ratings) {
+          query = {
+            ...query,
+            "ratings.average": {
+              $gte: parseFloat(ratings),
+              $lt: parseFloat(ratings) + 0.9,
+            },
+          };
+        }
+
+        const fetchedLaptops = await laptops
+          .find(query)
+          .limit(parseInt(limit) || 0)
+          .toArray();
 
         if (fetchedLaptops) {
           return res.status(200).json(fetchedLaptops);
+        }
+
+        res.status(404).json({ message: "no laptops found" });
+      } catch (error) {
+        res.status(500).json({ message: "something went wrong" });
+      }
+    });
+
+    app.get("/laptops/:laptopId", async (req, res) => {
+      try {
+        const laptopId = req.params.laptopId;
+
+        const fetchedLaptop = await laptops.findOne({
+          _id: new ObjectId(laptopId),
+        });
+
+        if (fetchedLaptop) {
+          return res.status(200).json(fetchedLaptop);
         }
 
         res.status(404).json({ message: "no laptops found" });
